@@ -743,6 +743,8 @@ func (server *Server) initMux(mux *http.ServeMux) {
 				return
 			}
 			w.Header().Set("Content-Type", string(mimeType))
+			fmt.Println("Serving " + filePath + " " + mimeType.String())
+			fmt.Println("Resource", r)
 			http.ServeFile(w, r, filePath)
 			return
 		}
