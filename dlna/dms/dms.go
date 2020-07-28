@@ -36,6 +36,7 @@ const (
 	rootDeviceModelName         = "dms 1.0"
 	resPath                     = "/res"
 	iconPath                    = "/icon"
+	cdpProxyPath                = "/cdp-proxy"
 	rootDescPath                = "/rootDesc.xml"
 	contentDirectorySCPDURL     = "/scpd/ContentDirectory.xml"
 	contentDirectoryEventSubURL = "/evt/ContentDirectory"
