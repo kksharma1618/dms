@@ -216,16 +216,18 @@ type Icon struct {
 }
 
 type Server struct {
-	HTTPConn       net.Listener
-	FriendlyName   string
-	Interfaces     []net.Interface
-	httpServeMux   *http.ServeMux
-	RootObjectPath string
-	rootDescXML    []byte
-	rootDeviceUUID string
-	FFProbeCache   Cache
-	closed         chan struct{}
-	ssdpStopped    chan struct{}
+	HTTPConn                   net.Listener
+	FriendlyName               string
+	Interfaces                 []net.Interface
+	httpServeMux               *http.ServeMux
+	RootObjectPath             string
+	ContentProviderServer      string
+	ContentProviderServerToken string
+	rootDescXML                []byte
+	rootDeviceUUID             string
+	FFProbeCache               Cache
+	closed                     chan struct{}
+	ssdpStopped                chan struct{}
 	// The service SOAP handler keyed by service URN.
 	services   map[string]UPnPService
 	LogHeaders bool
