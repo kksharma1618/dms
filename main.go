@@ -154,6 +154,7 @@ func main() {
 
 	log.Printf("allowed ip nets are %q", config.AllowedIpNets)
 	log.Printf("serving folder %q", config.Path)
+	log.Printf("ContentServiceProvider %s with token %s", config.ContentProviderServer, config.ContentProviderServerToken)
 
 	if len(*configFilePath) > 0 {
 		config.load(*configFilePath)

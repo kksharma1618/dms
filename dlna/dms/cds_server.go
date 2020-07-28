@@ -1,17 +1,20 @@
 package dms
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/anacrolix/dms/dlna"
 	"github.com/anacrolix/dms/upnp"
 	"github.com/anacrolix/dms/upnpav"
 )
 
-type ContentProviderServerItem struct {
+type contentProviderServerItem struct {
 	ID           string `json:"id"`
 	ParentID     string `json:"parent_id"`
 	IsDirectory  bool   `json:"is_directory"`
@@ -25,12 +28,34 @@ type ContentProviderServerItem struct {
 	Resolution   string `json:"resolution,omitempty"`
 }
 
-// Turns the given entry and DMS host into a UPnP object. A nil object is
-// returned if the entry is not of interest.
-func (me *contentDirectoryService) contentProviderObjectToUpnpObject(cdpObject ContentProviderServerItem, host, userAgent string) (ret interface{}, err error) {
-	if cdpObject.MediaURL == "" {
+var apiClient = http.Client{
+	Timeout: time.Second * 2, // Timeout after 2 seconds
+}
+
+func (me *contentDirectoryService) makeContentProviderApiRequest(path string) (body []byte, err error) {
+	req, err := http.NewRequest(http.MethodGet, me.ContentProviderServer+path, nil)
+	if err != nil {
 		return
 	}
+	req.Header.Set("Authorization", "Bearer: "+me.ContentProviderServerToken)
+
+	res, err := apiClient.Do(req)
+	if err != nil {
+		return
+	}
+
+	if res.Body != nil {
+		defer res.Body.Close()
+	}
+
+	body, err = ioutil.ReadAll(res.Body)
+	return
+}
+
+// Turns the given entry and DMS host into a UPnP object. A nil object is
+// returned if the entry is not of interest.
+func (me *contentDirectoryService) contentProviderObjectToUpnpObject(cdpObject contentProviderServerItem, host, userAgent string) (ret interface{}, err error) {
+
 	obj := upnpav.Object{
 		ID:         cdpObject.ID,
 		Restricted: 1,
@@ -41,6 +66,9 @@ func (me *contentDirectoryService) contentProviderObjectToUpnpObject(cdpObject C
 		obj.Class = "object.container.storageFolder"
 		obj.Title = cdpObject.Title
 		ret = upnpav.Container{Object: obj}
+		return
+	}
+	if cdpObject.MediaURL == "" {
 		return
 	}
 	if cdpObject.ThumbnailURL != "" {
@@ -94,43 +122,56 @@ func (me *contentDirectoryService) contentProviderObjectToUpnpObject(cdpObject C
 }
 
 func (me *contentDirectoryService) handleContentProviderServerBrowse(action string, argsXML []byte, r *http.Request) (map[string]string, error) {
+	host := r.Host
+	userAgent := r.UserAgent()
 	var browse browse
 	if err := xml.Unmarshal([]byte(argsXML), &browse); err != nil {
 		return nil, err
 	}
-	obj, err := me.objectFromID(browse.ObjectID)
-	if err != nil {
-		return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
-	}
-	fmt.Println(obj, err)
+	fmt.Println("Browse", browse.BrowseFlag, browse.ObjectID)
 	switch browse.BrowseFlag {
 	case "BrowseDirectChildren":
-		// objs, err := me.readContainer(obj, host, userAgent)
-		// if err != nil {
-		// 	return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
-		// }
-		// totalMatches := len(objs)
-		// objs = objs[func() (low int) {
-		// 	low = browse.StartingIndex
-		// 	if low > len(objs) {
-		// 		low = len(objs)
-		// 	}
-		// 	return
-		// }():]
-		// if browse.RequestedCount != 0 && int(browse.RequestedCount) < len(objs) {
-		// 	objs = objs[:browse.RequestedCount]
-		// }
-		// fmt.Println(objs)
-		// result, err := xml.Marshal(objs)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		// return map[string]string{
-		// 	"TotalMatches":   fmt.Sprint(totalMatches),
-		// 	"NumberReturned": fmt.Sprint(len(objs)),
-		// 	"Result":         didl_lite(string(result)),
-		// 	"UpdateID":       me.updateIDString(),
-		// }, nil
+		body, err := me.makeContentProviderApiRequest("/browse?id=" + browse.ObjectID)
+		fmt.Println("api.call", string(body), err)
+		if err != nil {
+			return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
+		}
+		cdObjs := []contentProviderServerItem{}
+		if err := json.Unmarshal(body, &cdObjs); err != nil {
+			return nil, err
+		}
+		totalMatches := len(cdObjs)
+		fmt.Println(cdObjs, totalMatches)
+		objs := make([]interface{}, 0, totalMatches)
+		for _, cdObj := range cdObjs {
+			obj, err := me.contentProviderObjectToUpnpObject(cdObj, host, userAgent)
+			fmt.Println("otr", obj, err)
+			if err == nil {
+				objs = append(objs, obj)
+			}
+		}
+		fmt.Println(objs)
+		objs = objs[func() (low int) {
+			low = browse.StartingIndex
+			if low > len(objs) {
+				low = len(objs)
+			}
+			return
+		}():]
+		if browse.RequestedCount != 0 && int(browse.RequestedCount) < len(objs) {
+			objs = objs[:browse.RequestedCount]
+		}
+		fmt.Println(objs)
+		result, err := xml.Marshal(objs)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{
+			"TotalMatches":   fmt.Sprint(totalMatches),
+			"NumberReturned": fmt.Sprint(len(objs)),
+			"Result":         didl_lite(string(result)),
+			"UpdateID":       me.updateIDString(),
+		}, nil
 	case "BrowseMetadata":
 		// fileInfo, err := os.Stat(obj.FilePath())
 		// if err != nil {
