@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/anacrolix/dms/dlna"
+	"github.com/anacrolix/dms/misc"
 	"github.com/anacrolix/dms/upnp"
 	"github.com/anacrolix/dms/upnpav"
 )
@@ -24,12 +25,12 @@ type contentProviderServerItem struct {
 	ThumbnailURL string `json:"thumbnail_url,omitempty"`
 	Size         uint64 `json:"size,omitempty"`
 	Bitrate      uint   `json:"bitrate,omitempty"`
-	Duration     string `json:"duration,omitempty"`
+	Duration     int    `json:"duration,omitempty"`
 	Resolution   string `json:"resolution,omitempty"`
 }
 
 var apiClient = http.Client{
-	Timeout: time.Second * 2, // Timeout after 2 seconds
+	Timeout: time.Second * 10, // Timeout after 2 seconds
 }
 
 func (me *contentDirectoryService) makeContentProviderApiRequest(path string) (body []byte, err error) {
@@ -55,6 +56,8 @@ func (me *contentDirectoryService) makeContentProviderApiRequest(path string) (b
 // Turns the given entry and DMS host into a UPnP object. A nil object is
 // returned if the entry is not of interest.
 func (me *contentDirectoryService) contentProviderObjectToUpnpObject(cdpObject contentProviderServerItem, host, userAgent string) (ret interface{}, err error) {
+
+	fmt.Println("contentProviderObjectToUpnpObject", cdpObject.MediaURL, cdpObject.MimeType)
 
 	obj := upnpav.Object{
 		ID:         cdpObject.ID,
@@ -84,6 +87,7 @@ func (me *contentDirectoryService) contentProviderObjectToUpnpObject(cdpObject c
 		obj.AlbumArtURI = iconURI
 	}
 	mtype := mimeType(cdpObject.MimeType)
+	fmt.Println(mtype, mtype.IsMedia())
 	if !mtype.IsMedia() {
 		return
 	}
@@ -107,7 +111,7 @@ func (me *contentDirectoryService) contentProviderObjectToUpnpObject(cdpObject c
 			SupportRange: true,
 		}.String()),
 		Bitrate:    cdpObject.Bitrate,
-		Duration:   cdpObject.Duration,
+		Duration:   misc.FormatDurationSexagesimal(time.Duration(cdpObject.Duration * 1000000000)),
 		Size:       uint64(cdpObject.Size),
 		Resolution: cdpObject.Resolution,
 	})
@@ -131,16 +135,22 @@ func (me *contentDirectoryService) handleContentProviderServerBrowse(action stri
 	fmt.Println("Browse", browse.BrowseFlag, browse.ObjectID)
 	switch browse.BrowseFlag {
 	case "BrowseDirectChildren":
-		body, err := me.makeContentProviderApiRequest("/browse?id=" + browse.ObjectID)
+		body, err := me.makeContentProviderApiRequest("/browse?" + url.Values{
+			"id": {browse.ObjectID},
+			"c":  {"jpeg"},
+		}.Encode())
 		fmt.Println("api.call", string(body), err)
 		if err != nil {
 			return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
 		}
+		fmt.Println("-------------------------")
 		cdObjs := []contentProviderServerItem{}
 		if err := json.Unmarshal(body, &cdObjs); err != nil {
+			fmt.Println("err", err)
 			return nil, err
 		}
 		totalMatches := len(cdObjs)
+		fmt.Println("-------------------------", totalMatches)
 		fmt.Println(cdObjs, totalMatches)
 		objs := make([]interface{}, 0, totalMatches)
 		for _, cdObj := range cdObjs {

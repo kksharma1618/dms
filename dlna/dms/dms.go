@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/httputil"
 	"net/http/pprof"
 	"net/url"
 	"os"
@@ -597,6 +598,23 @@ func (me *Server) serveIcon(w http.ResponseWriter, r *http.Request) {
 	}
 	http.ServeContent(w, r, "", time.Now(), bytes.NewReader(body))
 }
+func (me *Server) serveCdpProxy(res http.ResponseWriter, req *http.Request) {
+	target := req.URL.Query().Get("url")
+	// parse the url
+	url, _ := url.Parse(target)
+
+	// create the reverse proxy
+	proxy := httputil.NewSingleHostReverseProxy(url)
+
+	// Update the headers to allow for SSL redirection
+	req.URL.Host = url.Host
+	req.URL.Scheme = url.Scheme
+	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
+	req.Host = url.Host
+
+	// Note that ServeHttp is non blocking and uses a go routine under the hood
+	proxy.ServeHTTP(res, req)
+}
 
 func (server *Server) contentDirectoryInitialEvent(urls []*url.URL, sid string) {
 	body := xmlMarshalOrPanic(upnp.PropertySet{
@@ -724,6 +742,7 @@ func (server *Server) initMux(mux *http.ServeMux) {
 	})
 	mux.HandleFunc(contentDirectoryEventSubURL, server.contentDirectoryEventSubHandler)
 	mux.HandleFunc(iconPath, server.serveIcon)
+	mux.HandleFunc(cdpProxyPath, server.serveCdpProxy)
 	mux.HandleFunc(resPath, func(w http.ResponseWriter, r *http.Request) {
 		filePath := server.filePath(r.URL.Query().Get("path"))
 		if ignored, err := server.IgnorePath(filePath); err != nil {
