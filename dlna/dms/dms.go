@@ -11,7 +11,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/http/pprof"
 	"net/url"
 	"os"
@@ -218,18 +217,19 @@ type Icon struct {
 }
 
 type Server struct {
-	HTTPConn                   net.Listener
-	FriendlyName               string
-	Interfaces                 []net.Interface
-	httpServeMux               *http.ServeMux
-	RootObjectPath             string
-	ContentProviderServer      string
-	ContentProviderServerToken string
-	rootDescXML                []byte
-	rootDeviceUUID             string
-	FFProbeCache               Cache
-	closed                     chan struct{}
-	ssdpStopped                chan struct{}
+	HTTPConn                     net.Listener
+	FriendlyName                 string
+	Interfaces                   []net.Interface
+	httpServeMux                 *http.ServeMux
+	RootObjectPath               string
+	ContentProviderServer        string
+	ContentProviderServerRootCas string
+	ContentProviderServerToken   string
+	rootDescXML                  []byte
+	rootDeviceUUID               string
+	FFProbeCache                 Cache
+	closed                       chan struct{}
+	ssdpStopped                  chan struct{}
 	// The service SOAP handler keyed by service URN.
 	services   map[string]UPnPService
 	LogHeaders bool
@@ -597,23 +597,6 @@ func (me *Server) serveIcon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	http.ServeContent(w, r, "", time.Now(), bytes.NewReader(body))
-}
-func (me *Server) serveCdpProxy(res http.ResponseWriter, req *http.Request) {
-	target := req.URL.Query().Get("url")
-	// parse the url
-	url, _ := url.Parse(target)
-
-	// create the reverse proxy
-	proxy := httputil.NewSingleHostReverseProxy(url)
-
-	// Update the headers to allow for SSL redirection
-	req.URL.Host = url.Host
-	req.URL.Scheme = url.Scheme
-	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
-	req.Host = url.Host
-
-	// Note that ServeHttp is non blocking and uses a go routine under the hood
-	proxy.ServeHTTP(res, req)
 }
 
 func (server *Server) contentDirectoryInitialEvent(urls []*url.URL, sid string) {

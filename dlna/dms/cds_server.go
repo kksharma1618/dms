@@ -1,12 +1,17 @@
 package dms
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/anacrolix/dms/dlna"
@@ -29,19 +34,84 @@ type contentProviderServerItem struct {
 	Resolution   string `json:"resolution,omitempty"`
 }
 
-var apiClient = http.Client{
-	Timeout: time.Second * 10, // Timeout after 2 seconds
+var apiClient *http.Client = nil
+var apiTransport *http.Transport = nil
+
+func (me *Server) serveCdpProxy(res http.ResponseWriter, req *http.Request) {
+	target := req.URL.Query().Get("url")
+	// parse the url
+	url, _ := url.Parse(target)
+
+	// create the reverse proxy
+	proxy := httputil.NewSingleHostReverseProxy(url)
+	proxy.Transport = me.getApiTransport()
+
+	// Update the headers to allow for SSL redirection
+	req.URL.Host = url.Host
+	req.URL.Scheme = url.Scheme
+	req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
+	req.Host = url.Host
+
+	// Note that ServeHttp is non blocking and uses a go routine under the hood
+	proxy.ServeHTTP(res, req)
+}
+
+func (me *Server) getApiTransport() *http.Transport {
+	if apiTransport != nil {
+		return apiTransport
+	}
+	if me.ContentProviderServerRootCas == "" {
+		apiTransport = &http.Transport{}
+		return apiTransport
+	}
+
+	rootCasFiles := strings.Split(me.ContentProviderServerRootCas, ",")
+	rootCAs, _ := x509.SystemCertPool()
+	if rootCAs == nil {
+		rootCAs = x509.NewCertPool()
+	}
+	for _, rootCasFile := range rootCasFiles {
+		// Read in the cert file
+		certs, err := ioutil.ReadFile(rootCasFile)
+		if err != nil {
+			log.Fatalf("Failed to append %q to RootCAs: %v", rootCasFile, err)
+		}
+
+		// Append our cert to the system pool
+		if ok := rootCAs.AppendCertsFromPEM(certs); !ok {
+			log.Println("No certs appended, using system certs only")
+		}
+	}
+	config := &tls.Config{
+		RootCAs: rootCAs,
+	}
+	apiTransport = &http.Transport{TLSClientConfig: config}
+	return apiTransport
+}
+
+func (me *Server) getApiClient() *http.Client {
+	if apiClient != nil {
+		return apiClient
+	}
+	apiClient = &http.Client{
+		Transport: me.getApiTransport(),
+		Timeout:   time.Second * 10, // Timeout after 2 seconds
+	}
+	return apiClient
 }
 
 func (me *contentDirectoryService) makeContentProviderApiRequest(path string) (body []byte, err error) {
+	apiClient := me.getApiClient()
 	req, err := http.NewRequest(http.MethodGet, me.ContentProviderServer+path, nil)
 	if err != nil {
+		fmt.Println("api.err", err)
 		return
 	}
 	req.Header.Set("Authorization", "Bearer: "+me.ContentProviderServerToken)
 
 	res, err := apiClient.Do(req)
 	if err != nil {
+		fmt.Println("api.err", err)
 		return
 	}
 

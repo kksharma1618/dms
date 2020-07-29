@@ -28,23 +28,24 @@ import (
 )
 
 type dmsConfig struct {
-	Path                       string
-	ContentProviderServer      string
-	ContentProviderServerToken string
-	IfName                     string
-	Http                       string
-	FriendlyName               string
-	DeviceIcon                 string
-	LogHeaders                 bool
-	FFprobeCachePath           string
-	NoTranscode                bool
-	ForceTranscodeTo           string
-	NoProbe                    bool
-	StallEventSubscribe        bool
-	NotifyInterval             time.Duration
-	IgnoreHidden               bool
-	IgnoreUnreadable           bool
-	AllowedIpNets              []*net.IPNet
+	Path                         string
+	ContentProviderServer        string
+	ContentProviderServerToken   string
+	ContentProviderServerRootCas string
+	IfName                       string
+	Http                         string
+	FriendlyName                 string
+	DeviceIcon                   string
+	LogHeaders                   bool
+	FFprobeCachePath             string
+	NoTranscode                  bool
+	ForceTranscodeTo             string
+	NoProbe                      bool
+	StallEventSubscribe          bool
+	NotifyInterval               time.Duration
+	IgnoreHidden                 bool
+	IgnoreUnreadable             bool
+	AllowedIpNets                []*net.IPNet
 }
 
 func (config *dmsConfig) load(configPath string) {
@@ -64,16 +65,17 @@ func (config *dmsConfig) load(configPath string) {
 
 //default config
 var config = &dmsConfig{
-	Path:                       "",
-	ContentProviderServer:      "",
-	ContentProviderServerToken: "",
-	IfName:                     "",
-	Http:                       ":1338",
-	FriendlyName:               "",
-	DeviceIcon:                 "",
-	LogHeaders:                 false,
-	FFprobeCachePath:           getDefaultFFprobeCachePath(),
-	ForceTranscodeTo:           "",
+	Path:                         "",
+	ContentProviderServer:        "",
+	ContentProviderServerToken:   "",
+	ContentProviderServerRootCas: "",
+	IfName:                       "",
+	Http:                         ":1338",
+	FriendlyName:                 "",
+	DeviceIcon:                   "",
+	LogHeaders:                   false,
+	FFprobeCachePath:             getDefaultFFprobeCachePath(),
+	ForceTranscodeTo:             "",
 }
 
 func getDefaultFFprobeCachePath() (path string) {
@@ -117,6 +119,7 @@ func main() {
 
 	path := flag.String("path", config.Path, "browse root path")
 	contentProviderServer := flag.String("contentProviderServer", config.ContentProviderServer, "server providing content")
+	contentProviderServerRootCas := flag.String("contentProviderServerRootCas", config.ContentProviderServerRootCas, "server providing content")
 	contentProviderServerToken := flag.String("contentProviderServerToken", config.ContentProviderServerToken, "token used by ContentProviderServer")
 	ifName := flag.String("ifname", config.IfName, "specific SSDP network interface")
 	http := flag.String("http", config.Http, "http server port")
@@ -143,6 +146,7 @@ func main() {
 	config.Path, _ = filepath.Abs(*path)
 	config.ContentProviderServer = *contentProviderServer
 	config.ContentProviderServerToken = *contentProviderServerToken
+	config.ContentProviderServerRootCas = *contentProviderServerRootCas
 	config.IfName = *ifName
 	config.Http = *http
 	config.FriendlyName = *friendlyName
@@ -199,15 +203,16 @@ func main() {
 			}
 			return conn
 		}(),
-		FriendlyName:               config.FriendlyName,
-		RootObjectPath:             filepath.Clean(config.Path),
-		ContentProviderServer:      config.ContentProviderServer,
-		ContentProviderServerToken: config.ContentProviderServerToken,
-		FFProbeCache:               cache,
-		LogHeaders:                 config.LogHeaders,
-		NoTranscode:                config.NoTranscode,
-		ForceTranscodeTo:           config.ForceTranscodeTo,
-		NoProbe:                    config.NoProbe,
+		FriendlyName:                 config.FriendlyName,
+		RootObjectPath:               filepath.Clean(config.Path),
+		ContentProviderServer:        config.ContentProviderServer,
+		ContentProviderServerToken:   config.ContentProviderServerToken,
+		ContentProviderServerRootCas: config.ContentProviderServerRootCas,
+		FFProbeCache:                 cache,
+		LogHeaders:                   config.LogHeaders,
+		NoTranscode:                  config.NoTranscode,
+		ForceTranscodeTo:             config.ForceTranscodeTo,
+		NoProbe:                      config.NoProbe,
 		Icons: []dms.Icon{
 			dms.Icon{
 				Width:      48,
