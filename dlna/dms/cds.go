@@ -236,7 +236,6 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 		if err != nil {
 			return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
 		}
-		fmt.Println("Browse", browse.BrowseFlag, browse.StartingIndex, browse.RequestedCount, obj.Path, browse.ObjectID)
 		switch browse.BrowseFlag {
 		case "BrowseDirectChildren":
 			objs, err := me.readContainer(obj, host, userAgent)
@@ -255,7 +254,6 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 				objs = objs[:browse.RequestedCount]
 			}
 			result, err := xml.Marshal(objs)
-			fmt.Println(string(result))
 			if err != nil {
 				return nil, err
 			}
@@ -280,7 +278,6 @@ func (me *contentDirectoryService) Handle(action string, argsXML []byte, r *http
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println(upnp)
 			buf, err := xml.Marshal(upnp)
 			if err != nil {
 				return nil, err

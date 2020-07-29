@@ -57,8 +57,6 @@ func (me *contentDirectoryService) makeContentProviderApiRequest(path string) (b
 // returned if the entry is not of interest.
 func (me *contentDirectoryService) contentProviderObjectToUpnpObject(cdpObject contentProviderServerItem, host, userAgent string) (ret interface{}, err error) {
 
-	fmt.Println("contentProviderObjectToUpnpObject", cdpObject.MediaURL, cdpObject.MimeType)
-
 	obj := upnpav.Object{
 		ID:         cdpObject.ID,
 		Restricted: 1,
@@ -87,7 +85,6 @@ func (me *contentDirectoryService) contentProviderObjectToUpnpObject(cdpObject c
 		obj.AlbumArtURI = iconURI
 	}
 	mtype := mimeType(cdpObject.MimeType)
-	fmt.Println(mtype, mtype.IsMedia())
 	if !mtype.IsMedia() {
 		return
 	}
@@ -132,35 +129,27 @@ func (me *contentDirectoryService) handleContentProviderServerBrowse(action stri
 	if err := xml.Unmarshal([]byte(argsXML), &browse); err != nil {
 		return nil, err
 	}
-	fmt.Println("Browse", browse.BrowseFlag, browse.ObjectID)
 	switch browse.BrowseFlag {
 	case "BrowseDirectChildren":
 		body, err := me.makeContentProviderApiRequest("/browse?" + url.Values{
 			"id": {browse.ObjectID},
 			"c":  {"jpeg"},
 		}.Encode())
-		fmt.Println("api.call", string(body), err)
 		if err != nil {
 			return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
 		}
-		fmt.Println("-------------------------")
 		cdObjs := []contentProviderServerItem{}
 		if err := json.Unmarshal(body, &cdObjs); err != nil {
-			fmt.Println("err", err)
 			return nil, err
 		}
 		totalMatches := len(cdObjs)
-		fmt.Println("-------------------------", totalMatches)
-		fmt.Println(cdObjs, totalMatches)
 		objs := make([]interface{}, 0, totalMatches)
 		for _, cdObj := range cdObjs {
 			obj, err := me.contentProviderObjectToUpnpObject(cdObj, host, userAgent)
-			fmt.Println("otr", obj, err)
 			if err == nil {
 				objs = append(objs, obj)
 			}
 		}
-		fmt.Println(objs)
 		objs = objs[func() (low int) {
 			low = browse.StartingIndex
 			if low > len(objs) {
@@ -171,7 +160,6 @@ func (me *contentDirectoryService) handleContentProviderServerBrowse(action stri
 		if browse.RequestedCount != 0 && int(browse.RequestedCount) < len(objs) {
 			objs = objs[:browse.RequestedCount]
 		}
-		fmt.Println(objs)
 		result, err := xml.Marshal(objs)
 		if err != nil {
 			return nil, err
@@ -197,7 +185,6 @@ func (me *contentDirectoryService) handleContentProviderServerBrowse(action stri
 		// if err != nil {
 		// 	return nil, err
 		// }
-		// fmt.Println(upnp)
 		// buf, err := xml.Marshal(upnp)
 		// if err != nil {
 		// 	return nil, err
