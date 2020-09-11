@@ -203,13 +203,14 @@ func (me *contentDirectoryService) handleContentProviderServerBrowse(action stri
 	case "BrowseDirectChildren":
 		body, err := me.makeContentProviderApiRequest("/browse?" + url.Values{
 			"id": {browse.ObjectID},
-			"c":  {"jpeg"},
 		}.Encode())
 		if err != nil {
+			fmt.Println("BrowseDirectChildren.err", err)
 			return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
 		}
 		cdObjs := []contentProviderServerItem{}
 		if err := json.Unmarshal(body, &cdObjs); err != nil {
+			fmt.Println("BrowseDirectChildren.marshal.err", err)
 			return nil, err
 		}
 		totalMatches := len(cdObjs)
