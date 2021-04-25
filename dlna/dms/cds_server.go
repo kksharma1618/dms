@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anacrolix/dms/dlna"
-	"github.com/anacrolix/dms/misc"
-	"github.com/anacrolix/dms/upnp"
-	"github.com/anacrolix/dms/upnpav"
+	"github.com/kksharma1618/dms/dlna"
+	"github.com/kksharma1618/dms/misc"
+	"github.com/kksharma1618/dms/upnp"
+	"github.com/kksharma1618/dms/upnpav"
 )
 
 type contentProviderServerItem struct {

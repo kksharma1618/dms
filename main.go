@@ -22,8 +22,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/anacrolix/dms/dlna/dms"
-	"github.com/anacrolix/dms/rrcache"
+	"github.com/kksharma1618/dms/dlna/dms"
+	"github.com/kksharma1618/dms/rrcache"
 	"github.com/nfnt/resize"
 )
 

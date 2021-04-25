@@ -10,8 +10,8 @@ RUN \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/*
 
-COPY . /go/src/github.com/anacrolix/dms/
-WORKDIR /go/src/github.com/anacrolix/dms/
+COPY . /go/src/github.com/kksharma1618/dms/
+WORKDIR /go/src/github.com/kksharma1618/dms/
 RUN \
   go build -v .
 

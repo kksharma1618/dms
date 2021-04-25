@@ -22,7 +22,7 @@ Installing
 
 Assuming ``$GOPATH`` and Go have been configured already::
 
-    $ go get github.com/anacrolix/dms
+    $ go get github.com/kksharma1618/dms
 
 Ensure ``ffmpeg``/``avconv`` and/or ``ffmpegthumbnailer`` are in the ``PATH`` if the features depending on them are desired.
 

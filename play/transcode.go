@@ -10,7 +10,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/anacrolix/dms/misc"
+	"github.com/kksharma1618/dms/misc"
 )
 
 func main() {
