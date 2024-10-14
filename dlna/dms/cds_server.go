@@ -208,6 +208,7 @@ func (me *contentDirectoryService) handleContentProviderServerBrowse(action stri
 			fmt.Println("BrowseDirectChildren.err", err)
 			return nil, upnp.Errorf(upnpav.NoSuchObjectErrorCode, err.Error())
 		}
+		addNumericPrefix := true
 		cdObjs := []contentProviderServerItem{}
 		if err := json.Unmarshal(body, &cdObjs); err != nil {
 			fmt.Println("BrowseDirectChildren.marshal.err", err)
@@ -215,7 +216,12 @@ func (me *contentDirectoryService) handleContentProviderServerBrowse(action stri
 		}
 		totalMatches := len(cdObjs)
 		objs := make([]interface{}, 0, totalMatches)
-		for _, cdObj := range cdObjs {
+		numDigits := len(fmt.Sprintf("%d", totalMatches))
+		for i, cdObj := range cdObjs {
+			if addNumericPrefix {
+				// Format the prefix to have leading zeros
+				cdObj.Title = fmt.Sprintf("%0*d. %s", numDigits, i+1, cdObj.Title)
+			}
 			obj, err := me.contentProviderObjectToUpnpObject(cdObj, host, userAgent)
 			if err == nil {
 				objs = append(objs, obj)
